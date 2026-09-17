@@ -1,15 +1,12 @@
-import path from "node:path"
+import path from "node:path";
 
-import react from "@vitejs/plugin-react"
-import tailwindcss from "@tailwindcss/vite"
-import { defineConfig } from "vite"
-import { VitePWA } from "vite-plugin-pwa"
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(() => {
-  const base =
-    process.env.GITHUB_ACTIONS === "true" || process.env.NODE_ENV === "production"
-      ? "/Central-Admission-Organizer/"
-      : "/"
+  const base = "/Central-Admission-Organizer/";
 
   return {
     base,
@@ -21,15 +18,10 @@ export default defineConfig(() => {
       VitePWA({
         registerType: "autoUpdate",
 
-        includeAssets: [
-          "favicon-32x32.png",
-          "round.png",
-          "*.pdf",
-        ],
+        includeAssets: ["favicon-32x32.png", "round.png", "*.pdf"],
 
         manifest: {
-          name:
-            "Central Admission Organizer | ترتيب استمارة التقديم",
+          name: "Central Admission Organizer | ترتيب استمارة التقديم",
 
           short_name: "Admission Organizer",
 
@@ -70,5 +62,5 @@ export default defineConfig(() => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-  }
-})
+  };
+});
