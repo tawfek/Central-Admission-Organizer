@@ -1,0 +1,130 @@
+import * as React from "react"
+import { ArrowDownWideNarrow, ArrowRight, MapPin, MessageCircle, Printer, Send } from "lucide-react"
+import { useNavigate } from "@tanstack/react-router"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { AppControls } from "@/components/layout/app-controls"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getPublicAppUrl } from "@/config/app"
+import { useAdmissionSelection } from "@/app/selection-context"
+import { SortableChoiceList } from "@/features/selection/components/sortable-choice-list"
+import { PrintableForm } from "@/features/selection/components/printable-form"
+import { IRAQ_LOCATIONS, findIraqLocation } from "@/features/selection/data/iraq-locations"
+import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
+import { buildSelectionShareText, openTelegramShare, openWhatsAppShare } from "@/features/selection/domain/share"
+
+export function SelectionRoute() {
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const { orderedAdmissions, setOrderedAdmissions } = useAdmissionSelection()
+  const [locationId, setLocationId] = React.useState("")
+  const [customCity, setCustomCity] = React.useState("")
+
+  if (!orderedAdmissions.length) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-xl items-center px-4">
+        <Card className="w-full">
+          <CardContent className="p-8 text-center">
+            <h1 className="text-xl font-bold">{t("selection.emptyTitle")}</h1>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{t("selection.emptyDescription")}</p>
+            <Button className="mt-5" onClick={() => navigate({ to: "/" })}><ArrowRight className={`h-4 w-4 ${i18n.dir() === "ltr" ? "rotate-180" : ""}`} />{t("common.back")}</Button>
+          </CardContent>
+        </Card>
+      </main>
+    )
+  }
+
+  const prioritizePreset = () => {
+    if (!locationId) return
+    const location = findIraqLocation(locationId)
+    if (!location) return
+    const result = prioritizeByLocation(orderedAdmissions, location)
+    const label = t(location.translationKey)
+    if (!result.matches) {
+      toast.warning(t("selection.noCityMatches", { city: label }))
+      return
+    }
+    setOrderedAdmissions(result.items)
+    toast.success(t("selection.cityMatches", { count: result.matches, city: label }))
+  }
+
+  const prioritizeCustom = () => {
+    const term = customCity.trim()
+    if (!term) return
+    const result = prioritizeByCustomTerm(orderedAdmissions, term)
+    if (!result.matches) {
+      toast.warning(t("selection.noCityMatches", { city: term }))
+      return
+    }
+    setOrderedAdmissions(result.items)
+    toast.success(t("selection.cityMatches", { count: result.matches, city: term }))
+  }
+
+  const sortPercentage = () => {
+    setOrderedAdmissions(sortByPercentage(orderedAdmissions))
+    toast.success(t("selection.percentageSorted"))
+  }
+
+  const shareText = buildSelectionShareText(orderedAdmissions, t, getPublicAppUrl())
+
+  return (
+    <main className="print-shell mx-auto min-h-screen w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
+      <div className="no-print mb-4 flex justify-end"><AppControls /></div>
+
+      <div className="no-print mb-5 grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+        <div>
+          <Button variant="ghost" onClick={() => navigate({ to: "/" })}><ArrowRight className={`h-4 w-4 ${i18n.dir() === "ltr" ? "rotate-180" : ""}`} />{t("common.back")}</Button>
+        </div>
+        <div className="lg:text-center">
+          <h1 className="font-bold">{t("selection.title")}</h1>
+          <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{t("selection.description")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+          <Button onClick={() => window.print()}><Printer className="h-4 w-4" />{t("selection.print")}</Button>
+          <Button variant="outline" onClick={() => openWhatsAppShare(shareText)}><MessageCircle className="h-4 w-4" />{t("selection.whatsapp")}</Button>
+          <Button variant="outline" onClick={() => openTelegramShare(shareText, getPublicAppUrl())}><Send className="h-4 w-4" />{t("selection.telegram")}</Button>
+        </div>
+      </div>
+
+      <Card className="no-print mb-5">
+        <CardHeader>
+          <CardTitle>{t("selection.toolsTitle")}</CardTitle>
+          <CardDescription>{t("selection.toolsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="mb-3 flex items-center gap-2">
+              <ArrowDownWideNarrow className="h-4 w-4 text-zinc-500" />
+              <div><div className="text-sm font-semibold">{t("selection.sortPercentage")}</div><div className="text-xs text-zinc-500 dark:text-zinc-400">{t("selection.sortPercentageHint")}</div></div>
+            </div>
+            <Button className="w-full" variant="secondary" onClick={sortPercentage}>{t("selection.sortPercentage")}</Button>
+          </div>
+
+          <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="mb-3 flex items-center gap-2"><MapPin className="h-4 w-4 text-zinc-500" /><div className="text-sm font-semibold">{t("selection.prioritizeCity")}</div></div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <Select value={locationId || undefined} onValueChange={setLocationId}>
+                <SelectTrigger><SelectValue placeholder={t("selection.chooseCity")} /></SelectTrigger>
+                <SelectContent>
+                  {IRAQ_LOCATIONS.map((location) => <SelectItem key={location.id} value={location.id}>{t(location.translationKey)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="secondary" disabled={!locationId} onClick={prioritizePreset}>{t("selection.prioritize")}</Button>
+            </div>
+            <div className="my-3 flex items-center gap-2 text-xs text-zinc-400"><span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" /><span>{t("selection.customCity")}</span><span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" /></div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <Input dir={i18n.dir()} value={customCity} onChange={(event) => setCustomCity(event.target.value)} placeholder={t("selection.customCityPlaceholder")} onKeyDown={(event) => { if (event.key === "Enter") prioritizeCustom() }} />
+              <Button variant="outline" disabled={!customCity.trim()} onClick={prioritizeCustom}>{t("selection.prioritize")}</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="no-print mb-6"><SortableChoiceList items={orderedAdmissions} onChange={setOrderedAdmissions} /></div>
+      <div className="hidden print:block"><PrintableForm items={orderedAdmissions} /></div>
+    </main>
+  )
+}

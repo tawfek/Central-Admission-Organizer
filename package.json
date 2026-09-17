@@ -1,0 +1,49 @@
+{
+  "name": "central-admission-form",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Modern RTL React application for arranging Iraqi central admission choices.",
+  "scripts": {
+    "dev": "bunx --bun vite",
+    "build": "bun run data:import && bun run typecheck && bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "typecheck": "bunx --bun tsc -b --pretty false",
+    "data:import": "bun scripts/import-admissions.ts"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "@radix-ui/react-checkbox": "^1.3.3",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tanstack/react-query": "^5.87.1",
+    "@tanstack/react-router": "^1.131.35",
+    "@tanstack/react-table": "^8.21.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.542.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "i18next": "^26.4.2",
+    "react-i18next": "^17.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vite-plugin-pwa": "^1.0.3",
+    "vitest": "^3.2.4"
+  }
+}
