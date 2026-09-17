@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa"
 
 export default defineConfig(() => {
   const base =
-    process.env.GITHUB_ACTIONS === "true"
+    process.env.GITHUB_ACTIONS === "true" || process.env.NODE_ENV === "production"
       ? "/Central-Admission-Organizer/"
       : "/"
 
