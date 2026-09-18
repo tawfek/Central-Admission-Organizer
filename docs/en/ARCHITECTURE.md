@@ -41,3 +41,14 @@ The persisted state contains:
 When selections change, the current order is reconciled instead of rebuilt: still-selected choices keep their relative order, removed choices disappear, and newly selected choices are appended. Reset restores the original selection sequence. Bulk ordering operations keep a one-step undo snapshot in memory.
 
 Stable dataset `sourceId` values are used instead of row indexes. On load, saved IDs are pruned against the current dataset so removed records cannot break the application.
+
+
+## Telegram Mini App adapter
+
+Telegram is an application shell around the same React codebase, not a separate frontend. The integration lives under `src/integrations/telegram` and is inert in ordinary browsers.
+
+Inside Telegram the adapter initializes `Telegram.WebApp`, follows Telegram's system color scheme, respects safe-area/viewport CSS variables, provides BackButton/MainButton hooks and haptic helpers, and exposes display-only Telegram user context.
+
+Selection persistence remains local-first. Telegram clients that support Bot API 6.9+ additionally mirror the compact versioned selection state to `CloudStorage`, giving the bot/user a cross-device backup without introducing a runtime admissions backend.
+
+Verified Telegram identity and outbound bot notifications are a separate security boundary. If `VITE_TELEGRAM_API_URL` is configured, the frontend sends raw `initData` to `POST /telegram/session`; that server must validate Telegram's signature and freshness before trusting the user. Bot tokens are never part of the frontend.

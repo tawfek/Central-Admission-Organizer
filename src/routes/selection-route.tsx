@@ -18,10 +18,19 @@ import { PrintableForm } from "@/features/selection/components/printable-form"
 import { IRAQ_LOCATIONS, findIraqLocation } from "@/features/selection/data/iraq-locations"
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
 import { buildSelectionShareUrl, copyTextToClipboard, readSharedSelectionIds } from "@/features/selection/domain/share"
+import { useTelegram, useTelegramBackButton } from "@/integrations/telegram/telegram-context"
 
 export function SelectionRoute() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const {
+    isTelegram,
+    hapticSelection,
+    hapticSuccess,
+    hapticWarning,
+    hapticError,
+    hapticImpact,
+  } = useTelegram()
   const { data = [], isLoading } = useQuery(admissionsQueryOptions)
   const {
     orderedIds,
@@ -40,6 +49,13 @@ export function SelectionRoute() {
   const [sharedOrderedIds, setSharedOrderedIds] = React.useState(sharedInitialIds)
   const [sharedHasCustomOrder, setSharedHasCustomOrder] = React.useState(false)
   const [sharedUndo, setSharedUndo] = React.useState<{ ids: string[]; hasCustomOrder: boolean } | null>(null)
+
+  const goBack = React.useCallback(() => {
+    hapticImpact("light")
+    navigate({ to: "/" })
+  }, [hapticImpact, navigate])
+
+  useTelegramBackButton(goBack, true)
 
   const availableIds = React.useMemo(() => data.map((item) => item.sourceId), [data])
 
@@ -62,10 +78,12 @@ export function SelectionRoute() {
       setSharedOrderedIds(ids)
       setSharedHasCustomOrder(true)
       setSharedUndo(null)
+      hapticSelection()
       return
     }
     setOrderedIds(ids)
-  }, [isSharedView, setOrderedIds])
+    hapticSelection()
+  }, [hapticSelection, isSharedView, setOrderedIds])
 
   const applyCurrentBulkOrder = React.useCallback((ids: string[]) => {
     if (isSharedView) {
@@ -110,10 +128,12 @@ export function SelectionRoute() {
     const label = t(location.translationKey)
     if (!result.matches) {
       toast.warning(t("selection.noCityMatches", { city: label }))
+      hapticWarning()
       return
     }
     applyCurrentBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: label }))
+    hapticSuccess()
   }
 
   const prioritizeCustom = () => {
@@ -122,15 +142,18 @@ export function SelectionRoute() {
     const result = prioritizeByCustomTerm(orderedAdmissions, term)
     if (!result.matches) {
       toast.warning(t("selection.noCityMatches", { city: term }))
+      hapticWarning()
       return
     }
     applyCurrentBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: term }))
+    hapticSuccess()
   }
 
   const sortPercentage = () => {
     applyCurrentBulkOrder(sortByPercentage(orderedAdmissions).map((item) => item.sourceId))
     toast.success(t("selection.percentageSorted"))
+    hapticSuccess()
   }
 
   const undo = () => {
@@ -143,6 +166,7 @@ export function SelectionRoute() {
       undoOrder()
     }
     toast.success(t("selection.undoDone"))
+    hapticSuccess()
   }
 
   const reset = () => {
@@ -154,6 +178,7 @@ export function SelectionRoute() {
       resetOrder()
     }
     toast.success(t("selection.resetDone"))
+    hapticSuccess()
   }
 
   const publicAppUrl = getPublicAppUrl()
@@ -163,8 +188,10 @@ export function SelectionRoute() {
     try {
       await copyTextToClipboard(selectionShareUrl)
       toast.success(t("selection.linkCopied"))
+      hapticSuccess()
     } catch {
       toast.error(t("selection.copyLinkFailed"))
+      hapticError()
     }
   }
 
@@ -174,14 +201,19 @@ export function SelectionRoute() {
 
       <div className="no-print mb-5 grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:grid-cols-[auto_1fr_auto] lg:items-center">
         <div>
-          <Button variant="ghost" onClick={() => navigate({ to: "/" })}><ArrowRight className={`h-4 w-4 ${i18n.dir() === "ltr" ? "rotate-180" : ""}`} />{t("common.back")}</Button>
+          {!isTelegram && (
+            <Button variant="ghost" onClick={goBack}>
+              <ArrowRight className={`h-4 w-4 ${i18n.dir() === "ltr" ? "rotate-180" : ""}`} />
+              {t("common.back")}
+            </Button>
+          )}
         </div>
         <div className="lg:text-center">
           <h1 className="font-bold">{t("selection.title")}</h1>
           <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{t("selection.description")}</p>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          <Button onClick={() => window.print()}>
+          <Button onClick={() => { hapticImpact("light"); window.print() }}>
             <Printer className="h-4 w-4" />
             {t("selection.print")}
           </Button>

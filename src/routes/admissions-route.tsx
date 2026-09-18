@@ -20,6 +20,7 @@ import {
 } from "@/features/admissions/domain/selection";
 import type { AdmissionFilters } from "@/features/admissions/domain/types";
 import { useAdmissionSelection } from "@/app/selection-context";
+import { useTelegram, useTelegramMainButton } from "@/integrations/telegram/telegram-context";
 
 const initialFilters: AdmissionFilters = {
   maximumPercent: "",
@@ -40,6 +41,7 @@ export function AdmissionsRoute() {
     hasCustomOrder,
   } = useAdmissionSelection();
   const navigate = useNavigate();
+  const { isTelegram, hapticSelection, hapticImpact } = useTelegram();
 
   const filtered = React.useMemo(
     () => applyAdmissionFilters(data, filters),
@@ -75,14 +77,23 @@ export function AdmissionsRoute() {
         }
       }
       setSelectedIds(ids);
+      hapticSelection();
     },
-    [hasCustomOrder, selectedIds, setSelectedIds, t],
+    [hasCustomOrder, hapticSelection, selectedIds, setSelectedIds, t],
   );
 
-  const next = () => {
+  const next = React.useCallback(() => {
     if (!canProceed(selectedIds.length)) return;
+    hapticImpact("light");
     navigate({ to: "/selection" });
-  };
+  }, [hapticImpact, navigate, selectedIds.length]);
+
+  useTelegramMainButton({
+    visible: isTelegram && selectedIds.length > 0,
+    enabled: canProceed(selectedIds.length),
+    text: t("common.nextWithCount", { count: selectedIds.length }),
+    onClick: next,
+  });
 
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-4 pb-28 sm:px-6 sm:py-6 lg:px-8">
@@ -150,7 +161,7 @@ export function AdmissionsRoute() {
       )}
 
       {selectedIds.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-3 py-3 shadow-[0_-12px_30px_rgba(0,0,0,.08)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="telegram-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-3 py-3 shadow-[0_-12px_30px_rgba(0,0,0,.08)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold sm:text-base">
@@ -171,14 +182,16 @@ export function AdmissionsRoute() {
                 )}
               </div>
             </div>
-            <Button
-              size="lg"
-              className="shrink-0"
-              onClick={next}
-              disabled={!canProceed(selectedIds.length)}
-            >
-              {t("common.next")}
-            </Button>
+            {!isTelegram && (
+              <Button
+                size="lg"
+                className="shrink-0"
+                onClick={next}
+                disabled={!canProceed(selectedIds.length)}
+              >
+                {t("common.next")}
+              </Button>
+            )}
           </div>
         </div>
       )}

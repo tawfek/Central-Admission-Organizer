@@ -8,6 +8,7 @@ import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "
 import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
 import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
 import { buildSelectionShareUrl, readSharedSelectionIds } from "@/features/selection/domain/share"
+import { isTelegramPlatform } from "@/integrations/telegram/telegram"
 import { normalizeAdmissions } from "../scripts/admission-pdf/normalize"
 import { validateAdmissions } from "../scripts/admission-pdf/validate"
 
@@ -189,5 +190,16 @@ describe("share links", () => {
     expect(
       readSharedSelectionIds("#/selection?choices=103%2C271%2C103%2C287"),
     ).toEqual(["103", "271", "287"])
+  })
+})
+
+
+describe("telegram integration", () => {
+  it("detects Telegram platforms without treating a normal browser as Telegram", () => {
+    expect(isTelegramPlatform("android")).toBe(true)
+    expect(isTelegramPlatform("ios")).toBe(true)
+    expect(isTelegramPlatform("tdesktop")).toBe(true)
+    expect(isTelegramPlatform("unknown")).toBe(false)
+    expect(isTelegramPlatform(undefined)).toBe(false)
   })
 })

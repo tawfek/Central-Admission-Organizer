@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useTelegram } from "@/integrations/telegram/telegram-context"
 
 export type Theme = "light" | "dark" | "system"
 
@@ -21,9 +22,11 @@ function readInitialTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { isTelegram, colorScheme } = useTelegram()
   const [theme, setThemeState] = React.useState<Theme>(readInitialTheme)
   const [systemTheme, setSystemTheme] = React.useState<"light" | "dark">(getSystemTheme)
-  const resolvedTheme = theme === "system" ? systemTheme : theme
+  const environmentTheme = isTelegram && colorScheme ? colorScheme : systemTheme
+  const resolvedTheme = theme === "system" ? environmentTheme : theme
 
   React.useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)")

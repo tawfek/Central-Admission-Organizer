@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Toaster } from "sonner"
 import { SelectionProvider } from "./selection-context"
 import { ThemeProvider, useTheme } from "./theme-context"
+import { TelegramProvider } from "@/integrations/telegram/telegram-context"
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } }
@@ -17,12 +18,14 @@ function LocalizedToaster() {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <SelectionProvider>
-          {children}
-          <LocalizedToaster />
-        </SelectionProvider>
-      </ThemeProvider>
+      <TelegramProvider>
+        <ThemeProvider>
+          <SelectionProvider>
+            {children}
+            <LocalizedToaster />
+          </SelectionProvider>
+        </ThemeProvider>
+      </TelegramProvider>
     </QueryClientProvider>
   )
 }

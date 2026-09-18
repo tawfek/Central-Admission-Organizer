@@ -1,6 +1,6 @@
 # Central Admission Choice Organizer
 
-A modern, static React application for exploring Iraqi central-admission minimum scores, selecting departments, arranging their order, printing the final list, and sharing it through WhatsApp or Telegram.
+A modern, static React application for exploring Iraqi central-admission minimum scores, selecting departments, arranging their order, printing the final list, and sharing editable ordered-selection links.
 
 **No runtime backend or database is required.** A build-time PDF importer converts the canonical admission-minimums PDF directly into a validated JSON dataset bundled with the frontend.
 
@@ -18,6 +18,7 @@ A modern, static React application for exploring Iraqi central-admission minimum
 - i18next + react-i18next
 - Vite PWA
 - Bun test runner
+- Telegram Mini App integration (theme, native navigation/actions, haptics, CloudStorage)
 
 ## Quick start
 
@@ -79,6 +80,7 @@ English:
 - [Architecture](docs/en/ARCHITECTURE.md)
 - [Data and importing](docs/en/DATA.md)
 - [Deployment](docs/en/DEPLOYMENT.md)
+- [Telegram Mini App](docs/en/TELEGRAM.md)
 
 العربية:
 
@@ -86,6 +88,7 @@ English:
 - [المعمارية](docs/ar/ARCHITECTURE.md)
 - [البيانات والاستيراد](docs/ar/DATA.md)
 - [النشر](docs/ar/DEPLOYMENT.md)
+- [Telegram Mini App](docs/ar/TELEGRAM.md)
 
 ## Compatibility
 

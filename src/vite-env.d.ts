@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_APP_URL?: string
+  readonly VITE_TELEGRAM_API_URL?: string
 }
 
 interface ImportMeta {

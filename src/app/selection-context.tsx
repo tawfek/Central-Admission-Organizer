@@ -8,6 +8,11 @@ import {
   setOrderedSelectionState,
   type PersistedSelectionState,
 } from "@/features/selection/domain/selection-state"
+import {
+  getTelegramCloudStorage,
+  readTelegramCloudSelection,
+  writeTelegramCloudSelection,
+} from "@/integrations/telegram/telegram"
 
 const STORAGE_KEY = "central-admission-selection-v1"
 
@@ -21,6 +26,7 @@ interface RuntimeSelectionState extends PersistedSelectionState {
 }
 
 type Action =
+  | { type: "hydrate"; state: PersistedSelectionState }
   | { type: "replace-selection"; ids: string[] }
   | { type: "set-order"; ids: string[] }
   | { type: "apply-bulk-order"; ids: string[] }
@@ -53,14 +59,34 @@ function loadInitialState(): RuntimeSelectionState {
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    const persisted = raw ? normalizePersistedSelectionState(JSON.parse(raw)) : createEmptySelectionState()
+    const persisted = raw
+      ? normalizePersistedSelectionState(JSON.parse(raw))
+      : createEmptySelectionState()
+
     return { ...persisted, undoSnapshot: null }
   } catch {
     return { ...createEmptySelectionState(), undoSnapshot: null }
   }
 }
 
+function toPersistedState(state: RuntimeSelectionState): PersistedSelectionState {
+  return {
+    version: state.version,
+    selectedIds: state.selectedIds,
+    selectionSequenceIds: state.selectionSequenceIds,
+    orderedIds: state.orderedIds,
+    hasCustomOrder: state.hasCustomOrder,
+  }
+}
+
 function reducer(state: RuntimeSelectionState, action: Action): RuntimeSelectionState {
+  if (action.type === "hydrate") {
+    return {
+      ...action.state,
+      undoSnapshot: null,
+    }
+  }
+
   if (action.type === "replace-selection") {
     return {
       ...reconcileSelectionState(state, action.ids),
@@ -87,6 +113,7 @@ function reducer(state: RuntimeSelectionState, action: Action): RuntimeSelection
 
   if (action.type === "undo-order") {
     if (!state.undoSnapshot) return state
+
     return {
       ...setOrderedSelectionState(
         state,
@@ -119,24 +146,67 @@ function reducer(state: RuntimeSelectionState, action: Action): RuntimeSelection
 
 export function SelectionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, undefined, loadInitialState)
+  const hasTelegramCloud = React.useMemo(() => Boolean(getTelegramCloudStorage()), [])
+  const [telegramCloudHydrated, setTelegramCloudHydrated] = React.useState(!hasTelegramCloud)
+  const stateRef = React.useRef(state)
+  const initialStateJsonRef = React.useRef(JSON.stringify(toPersistedState(state)))
+
+  stateRef.current = state
 
   React.useEffect(() => {
-    const persisted: PersistedSelectionState = {
-      version: state.version,
-      selectedIds: state.selectedIds,
-      selectionSequenceIds: state.selectionSequenceIds,
-      orderedIds: state.orderedIds,
-      hasCustomOrder: state.hasCustomOrder,
-    }
+    if (!hasTelegramCloud) return
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted))
-  }, [
-    state.version,
-    state.selectedIds,
-    state.selectionSequenceIds,
-    state.orderedIds,
-    state.hasCustomOrder,
-  ])
+    let active = true
+
+    void readTelegramCloudSelection().then((raw) => {
+      if (!active) return
+
+      if (raw) {
+        try {
+          const remote = normalizePersistedSelectionState(JSON.parse(raw))
+          const currentJson = JSON.stringify(toPersistedState(stateRef.current))
+
+          // Do not overwrite interactions that happened while Telegram cloud
+          // storage was still loading.
+          if (currentJson === initialStateJsonRef.current) {
+            dispatch({ type: "hydrate", state: remote })
+          }
+        } catch {
+          // Ignore malformed cloud state and replace it with local state below.
+        }
+      }
+
+      setTelegramCloudHydrated(true)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [hasTelegramCloud])
+
+  const persistedState = React.useMemo(
+    () => toPersistedState(state),
+    [
+      state.version,
+      state.selectedIds,
+      state.selectionSequenceIds,
+      state.orderedIds,
+      state.hasCustomOrder,
+    ],
+  )
+  const serializedState = React.useMemo(
+    () => JSON.stringify(persistedState),
+    [persistedState],
+  )
+
+  React.useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, serializedState)
+  }, [serializedState])
+
+  React.useEffect(() => {
+    if (!hasTelegramCloud || !telegramCloudHydrated) return
+    void writeTelegramCloudSelection(serializedState)
+  }, [hasTelegramCloud, serializedState, telegramCloudHydrated])
 
   const setSelectedIds = React.useCallback(
     (ids: string[]) => dispatch({ type: "replace-selection", ids }),

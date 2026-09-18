@@ -32,3 +32,7 @@ button:disabled { cursor: not-allowed; }
   .print-card * { color: #000 !important; border-color: #d4d4d8 !important; }
   @page { margin: 14mm; }
 }
+
+.telegram-mini-app .app-shell {
+  min-height: var(--tg-viewport-stable-height, 100vh);
+}

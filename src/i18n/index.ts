@@ -1,6 +1,7 @@
 import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
 import { resources } from "./resources"
+import { getTelegramWebApp, isTelegramPlatform } from "@/integrations/telegram/telegram"
 
 export type AppLanguage = "ar" | "en"
 const STORAGE_KEY = "admission-language"
@@ -8,7 +9,15 @@ const STORAGE_KEY = "admission-language"
 function initialLanguage(): AppLanguage {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === "ar" || stored === "en") return stored
-  return navigator.language.toLowerCase().startsWith("en") ? "en" : "ar"
+
+  const telegram = getTelegramWebApp()
+  const telegramLanguage =
+    telegram && isTelegramPlatform(telegram.platform)
+      ? telegram.initDataUnsafe.user?.language_code
+      : undefined
+
+  const language = telegramLanguage || navigator.language
+  return language.toLowerCase().startsWith("en") ? "en" : "ar"
 }
 
 function applyDocumentLanguage(language: string) {
