@@ -4,6 +4,7 @@ import { canProceed, isSelectionWithinLimit } from "@/features/admissions/domain
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
 import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
 import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
+import { buildSelectionShareUrl, readSharedSelectionIds } from "@/features/selection/domain/share"
 
 const row = ["1", "1\r\n", "جامعة بغداد/كلية الطب\r\n", "699.5\r\n", "99.9", "297\r\n", "علمي\r\n", "مختلط\r\n"]
 
@@ -110,5 +111,32 @@ describe("persistent selection state", () => {
     expect(state.orderedIds).toEqual(["A", "B", "C"])
     expect(state.selectedIds).toEqual(["A", "B", "C"])
     expect(state.hasCustomOrder).toBe(false)
+  })
+})
+
+
+describe("share links", () => {
+  it("encodes the ordered source IDs in a short share URL", () => {
+    const base = normalizeLegacyAdmission(row, 0)
+    const items = [
+      { ...base, sourceId: "103" },
+      { ...base, sourceId: "271" },
+      { ...base, sourceId: "287" },
+    ]
+
+    const url = buildSelectionShareUrl(
+      items,
+      "https://tawfek.github.io/Central-Admission-Organizer",
+    )
+
+    expect(url).toBe(
+      "https://tawfek.github.io/Central-Admission-Organizer/#/selection?choices=103%2C271%2C287",
+    )
+  })
+
+  it("restores shared choice IDs from the hash without duplicates", () => {
+    expect(
+      readSharedSelectionIds("#/selection?choices=103%2C271%2C103%2C287"),
+    ).toEqual(["103", "271", "287"])
   })
 })

@@ -17,7 +17,7 @@ import { SortableChoiceList } from "@/features/selection/components/sortable-cho
 import { PrintableForm } from "@/features/selection/components/printable-form"
 import { IRAQ_LOCATIONS, findIraqLocation } from "@/features/selection/data/iraq-locations"
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
-import { buildSelectionShareText, openTelegramShare, openWhatsAppShare } from "@/features/selection/domain/share"
+import { buildSelectionShareText, buildSelectionShareUrl, buildTelegramShareText, openTelegramShare, openWhatsAppShare, readSharedSelectionIds } from "@/features/selection/domain/share"
 
 export function SelectionRoute() {
   const { t, i18n } = useTranslation()
@@ -35,21 +35,50 @@ export function SelectionRoute() {
   } = useAdmissionSelection()
   const [locationId, setLocationId] = React.useState("")
   const [customCity, setCustomCity] = React.useState("")
+  const sharedInitialIds = React.useMemo(() => readSharedSelectionIds(), [])
+  const isSharedView = sharedInitialIds.length > 0
+  const [sharedOrderedIds, setSharedOrderedIds] = React.useState(sharedInitialIds)
+  const [sharedHasCustomOrder, setSharedHasCustomOrder] = React.useState(false)
+  const [sharedUndo, setSharedUndo] = React.useState<{ ids: string[]; hasCustomOrder: boolean } | null>(null)
 
   const availableIds = React.useMemo(() => data.map((item) => item.sourceId), [data])
 
   React.useEffect(() => {
-    if (!isLoading && data.length > 0) reconcileAvailableIds(availableIds)
-  }, [availableIds, data.length, isLoading, reconcileAvailableIds])
+    if (!isSharedView && !isLoading && data.length > 0) reconcileAvailableIds(availableIds)
+  }, [availableIds, data.length, isLoading, isSharedView, reconcileAvailableIds])
 
   const admissionById = React.useMemo(
     () => new Map(data.map((item) => [item.sourceId, item])),
     [data],
   )
+  const activeOrderedIds = isSharedView ? sharedOrderedIds : orderedIds
   const orderedAdmissions = React.useMemo(
-    () => orderedIds.map((id) => admissionById.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item)),
-    [admissionById, orderedIds],
+    () => activeOrderedIds.map((id) => admissionById.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    [activeOrderedIds, admissionById],
   )
+
+  const setCurrentOrderedIds = React.useCallback((ids: string[]) => {
+    if (isSharedView) {
+      setSharedOrderedIds(ids)
+      setSharedHasCustomOrder(true)
+      setSharedUndo(null)
+      return
+    }
+    setOrderedIds(ids)
+  }, [isSharedView, setOrderedIds])
+
+  const applyCurrentBulkOrder = React.useCallback((ids: string[]) => {
+    if (isSharedView) {
+      setSharedUndo({ ids: [...sharedOrderedIds], hasCustomOrder: sharedHasCustomOrder })
+      setSharedOrderedIds(ids)
+      setSharedHasCustomOrder(true)
+      return
+    }
+    applyBulkOrder(ids)
+  }, [applyBulkOrder, isSharedView, sharedHasCustomOrder, sharedOrderedIds])
+
+  const currentHasCustomOrder = isSharedView ? sharedHasCustomOrder : hasCustomOrder
+  const currentCanUndo = isSharedView ? Boolean(sharedUndo) : canUndo
 
   if (isLoading) {
     return (
@@ -83,7 +112,7 @@ export function SelectionRoute() {
       toast.warning(t("selection.noCityMatches", { city: label }))
       return
     }
-    applyBulkOrder(result.items.map((item) => item.sourceId))
+    applyCurrentBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: label }))
   }
 
@@ -95,26 +124,42 @@ export function SelectionRoute() {
       toast.warning(t("selection.noCityMatches", { city: term }))
       return
     }
-    applyBulkOrder(result.items.map((item) => item.sourceId))
+    applyCurrentBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: term }))
   }
 
   const sortPercentage = () => {
-    applyBulkOrder(sortByPercentage(orderedAdmissions).map((item) => item.sourceId))
+    applyCurrentBulkOrder(sortByPercentage(orderedAdmissions).map((item) => item.sourceId))
     toast.success(t("selection.percentageSorted"))
   }
 
   const undo = () => {
-    undoOrder()
+    if (isSharedView) {
+      if (!sharedUndo) return
+      setSharedOrderedIds(sharedUndo.ids)
+      setSharedHasCustomOrder(sharedUndo.hasCustomOrder)
+      setSharedUndo(null)
+    } else {
+      undoOrder()
+    }
     toast.success(t("selection.undoDone"))
   }
 
   const reset = () => {
-    resetOrder()
+    if (isSharedView) {
+      setSharedUndo({ ids: [...sharedOrderedIds], hasCustomOrder: sharedHasCustomOrder })
+      setSharedOrderedIds(sharedInitialIds)
+      setSharedHasCustomOrder(false)
+    } else {
+      resetOrder()
+    }
     toast.success(t("selection.resetDone"))
   }
 
-  const shareText = buildSelectionShareText(orderedAdmissions, t, getPublicAppUrl())
+  const publicAppUrl = getPublicAppUrl()
+  const shareText = buildSelectionShareText(orderedAdmissions, t, publicAppUrl)
+  const selectionShareUrl = buildSelectionShareUrl(orderedAdmissions, publicAppUrl)
+  const telegramShareText = buildTelegramShareText(orderedAdmissions, t)
 
   return (
     <main className="print-shell mx-auto min-h-screen w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
@@ -131,7 +176,7 @@ export function SelectionRoute() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
           <Button onClick={() => window.print()}><Printer className="h-4 w-4" />{t("selection.print")}</Button>
           <Button variant="outline" onClick={() => openWhatsAppShare(shareText)}><MessageCircle className="h-4 w-4" />{t("selection.whatsapp")}</Button>
-          <Button variant="outline" onClick={() => openTelegramShare(shareText, getPublicAppUrl())}><Send className="h-4 w-4" />{t("selection.telegram")}</Button>
+          <Button variant="outline" onClick={() => openTelegramShare(telegramShareText, selectionShareUrl)}><Send className="h-4 w-4" />{t("selection.telegram")}</Button>
         </div>
       </div>
 
@@ -145,16 +190,18 @@ export function SelectionRoute() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {t("selection.autoSaved")}
+                {isSharedView ? t("selection.sharedView") : t("selection.autoSaved")}
               </Badge>
-              {hasCustomOrder && <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("selection.savedOrder")}</span>}
+              {isSharedView
+                ? <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("selection.sharedViewHint")}</span>
+                : currentHasCustomOrder && <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("selection.savedOrder")}</span>}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex">
-              <Button type="button" variant="outline" size="sm" disabled={!canUndo} onClick={undo}>
+              <Button type="button" variant="outline" size="sm" disabled={!currentCanUndo} onClick={undo}>
                 <Undo2 className="h-4 w-4" />
                 {t("selection.undo")}
               </Button>
-              <Button type="button" variant="outline" size="sm" disabled={!hasCustomOrder} onClick={reset}>
+              <Button type="button" variant="outline" size="sm" disabled={!currentHasCustomOrder} onClick={reset}>
                 <RotateCcw className="h-4 w-4" />
                 {t("selection.resetOrder")}
               </Button>
@@ -194,7 +241,7 @@ export function SelectionRoute() {
       <div className="no-print mb-6">
         <SortableChoiceList
           items={orderedAdmissions}
-          onChange={(items) => setOrderedIds(items.map((item) => item.sourceId))}
+          onChange={(items) => setCurrentOrderedIds(items.map((item) => item.sourceId))}
         />
       </div>
       <div className="hidden print:block"><PrintableForm items={orderedAdmissions} /></div>
