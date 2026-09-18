@@ -7,6 +7,13 @@ A modern, static React application for exploring Iraqi central-admission minimum
 - [English documentation](docs/en/README.md)
 - [التوثيق العربي](docs/ar/README.md)
 
+## Screenshots
+
+| Admissions & filtering | Selection & ordering |
+| --- | --- |
+| ![Admissions screen](public/1.png) | ![Selection screen](public/2.png) |
+| ![Admissions mobile view](public/3.png) | ![Ordered choices view](public/4.png) |
+
 ## Technology
 
 - React 19 + TypeScript

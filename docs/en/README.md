@@ -9,6 +9,13 @@ This repository modernizes the original Gatsby/Ant Design central-admission help
 5. Reorder manually with drag and drop or use quick ordering tools.
 6. Print or share the final sequence.
 
+## Screenshots
+
+| Admissions & filtering | Selection & ordering |
+| --- | --- |
+| ![Admissions screen](../../public/1.png) | ![Selection screen](../../public/2.png) |
+| ![Admissions mobile view](../../public/3.png) | ![Ordered choices view](../../public/4.png) |
+
 ## User-facing features
 
 - Arabic and English UI with automatic RTL/LTR direction.
