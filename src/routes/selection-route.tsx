@@ -1,14 +1,17 @@
 import * as React from "react"
-import { ArrowDownWideNarrow, ArrowRight, MapPin, MessageCircle, Printer, Send } from "lucide-react"
+import { ArrowDownWideNarrow, ArrowRight, CheckCircle2, MapPin, MessageCircle, Printer, RotateCcw, Send, Undo2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { AppControls } from "@/components/layout/app-controls"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getPublicAppUrl } from "@/config/app"
+import { admissionsQueryOptions } from "@/features/admissions/data/admission-queries"
 import { useAdmissionSelection } from "@/app/selection-context"
 import { SortableChoiceList } from "@/features/selection/components/sortable-choice-list"
 import { PrintableForm } from "@/features/selection/components/printable-form"
@@ -19,9 +22,42 @@ import { buildSelectionShareText, openTelegramShare, openWhatsAppShare } from "@
 export function SelectionRoute() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { orderedAdmissions, setOrderedAdmissions } = useAdmissionSelection()
+  const { data = [], isLoading } = useQuery(admissionsQueryOptions)
+  const {
+    orderedIds,
+    setOrderedIds,
+    applyBulkOrder,
+    undoOrder,
+    resetOrder,
+    reconcileAvailableIds,
+    hasCustomOrder,
+    canUndo,
+  } = useAdmissionSelection()
   const [locationId, setLocationId] = React.useState("")
   const [customCity, setCustomCity] = React.useState("")
+
+  const availableIds = React.useMemo(() => data.map((item) => item.sourceId), [data])
+
+  React.useEffect(() => {
+    if (!isLoading && data.length > 0) reconcileAvailableIds(availableIds)
+  }, [availableIds, data.length, isLoading, reconcileAvailableIds])
+
+  const admissionById = React.useMemo(
+    () => new Map(data.map((item) => [item.sourceId, item])),
+    [data],
+  )
+  const orderedAdmissions = React.useMemo(
+    () => orderedIds.map((id) => admissionById.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    [admissionById, orderedIds],
+  )
+
+  if (isLoading) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-4 text-sm text-zinc-500 dark:text-zinc-400">
+        {t("common.loading")}
+      </main>
+    )
+  }
 
   if (!orderedAdmissions.length) {
     return (
@@ -47,7 +83,7 @@ export function SelectionRoute() {
       toast.warning(t("selection.noCityMatches", { city: label }))
       return
     }
-    setOrderedAdmissions(result.items)
+    applyBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: label }))
   }
 
@@ -59,13 +95,23 @@ export function SelectionRoute() {
       toast.warning(t("selection.noCityMatches", { city: term }))
       return
     }
-    setOrderedAdmissions(result.items)
+    applyBulkOrder(result.items.map((item) => item.sourceId))
     toast.success(t("selection.cityMatches", { count: result.matches, city: term }))
   }
 
   const sortPercentage = () => {
-    setOrderedAdmissions(sortByPercentage(orderedAdmissions))
+    applyBulkOrder(sortByPercentage(orderedAdmissions).map((item) => item.sourceId))
     toast.success(t("selection.percentageSorted"))
+  }
+
+  const undo = () => {
+    undoOrder()
+    toast.success(t("selection.undoDone"))
+  }
+
+  const reset = () => {
+    resetOrder()
+    toast.success(t("selection.resetDone"))
   }
 
   const shareText = buildSelectionShareText(orderedAdmissions, t, getPublicAppUrl())
@@ -94,7 +140,28 @@ export function SelectionRoute() {
           <CardTitle>{t("selection.toolsTitle")}</CardTitle>
           <CardDescription>{t("selection.toolsDescription")}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-2">
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-950/30">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {t("selection.autoSaved")}
+              </Badge>
+              {hasCustomOrder && <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("selection.savedOrder")}</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Button type="button" variant="outline" size="sm" disabled={!canUndo} onClick={undo}>
+                <Undo2 className="h-4 w-4" />
+                {t("selection.undo")}
+              </Button>
+              <Button type="button" variant="outline" size="sm" disabled={!hasCustomOrder} onClick={reset}>
+                <RotateCcw className="h-4 w-4" />
+                {t("selection.resetOrder")}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{t("selection.resetOrderHint")}</p>
+          <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
             <div className="mb-3 flex items-center gap-2">
               <ArrowDownWideNarrow className="h-4 w-4 text-zinc-500" />
@@ -120,10 +187,16 @@ export function SelectionRoute() {
               <Button variant="outline" disabled={!customCity.trim()} onClick={prioritizeCustom}>{t("selection.prioritize")}</Button>
             </div>
           </div>
+          </div>
         </CardContent>
       </Card>
 
-      <div className="no-print mb-6"><SortableChoiceList items={orderedAdmissions} onChange={setOrderedAdmissions} /></div>
+      <div className="no-print mb-6">
+        <SortableChoiceList
+          items={orderedAdmissions}
+          onChange={(items) => setOrderedIds(items.map((item) => item.sourceId))}
+        />
+      </div>
       <div className="hidden print:block"><PrintableForm items={orderedAdmissions} /></div>
     </main>
   )

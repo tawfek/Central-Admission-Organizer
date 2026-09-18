@@ -25,3 +25,19 @@ Percentage sorting creates a new array ordered by descending score. Location pri
 ## Backend
 
 There is no runtime admissions backend. `admissions.raw.json` is imported by Vite and becomes part of the application bundle. A backend can be introduced later by implementing `AdmissionRepository.list()` without changing the screens.
+
+
+## Selection state and persistence
+
+Selection membership and ordering are application state, not server state. TanStack Query owns the local admissions dataset, while the selection provider owns a versioned ID-only snapshot in `localStorage`.
+
+The persisted state contains:
+
+- selected source IDs;
+- the original selection sequence;
+- the current ordered IDs;
+- whether the user has created a custom order.
+
+When selections change, the current order is reconciled instead of rebuilt: still-selected choices keep their relative order, removed choices disappear, and newly selected choices are appended. Reset restores the original selection sequence. Bulk ordering operations keep a one-step undo snapshot in memory.
+
+Stable dataset `sourceId` values are used instead of row indexes. On load, saved IDs are pruned against the current dataset so removed records cannot break the application.

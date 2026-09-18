@@ -3,6 +3,7 @@ import { applyAdmissionFilters, normalizeLegacyAdmission, uniqueAdmissionValues 
 import { canProceed, isSelectionWithinLimit } from "@/features/admissions/domain/selection"
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
 import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
+import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
 
 const row = ["1", "1\r\n", "جامعة بغداد/كلية الطب\r\n", "699.5\r\n", "99.9", "297\r\n", "علمي\r\n", "مختلط\r\n"]
 
@@ -67,5 +68,47 @@ describe("selection ordering", () => {
     const result = prioritizeByCustomTerm(items, "Kirkuk")
     expect(result.matches).toBe(2)
     expect(result.items.slice(0, 2).map((item) => item.key)).toEqual([2, 3])
+  })
+})
+
+
+describe("persistent selection state", () => {
+  it("preserves the existing manual order, removes deselected items, and appends new choices", () => {
+    let state = reconcileSelectionState(createEmptySelectionState(), ["A", "B", "C", "D"])
+    state = setOrderedSelectionState(state, ["C", "A", "D", "B"])
+    state = reconcileSelectionState(state, ["B", "C", "D", "E", "F"])
+
+    expect(state.orderedIds).toEqual(["C", "D", "B", "E", "F"])
+    expect(state.selectionSequenceIds).toEqual(["B", "C", "D", "E", "F"])
+    expect(state.hasCustomOrder).toBe(true)
+  })
+
+  it("appends a choice to the end when it is deselected and later selected again", () => {
+    let state = reconcileSelectionState(createEmptySelectionState(), ["A", "B", "C"])
+    state = setOrderedSelectionState(state, ["C", "A", "B"])
+    state = reconcileSelectionState(state, ["A", "C"])
+    state = reconcileSelectionState(state, ["A", "C", "B"])
+
+    expect(state.orderedIds).toEqual(["C", "A", "B"])
+    expect(state.selectionSequenceIds).toEqual(["A", "C", "B"])
+  })
+
+  it("prunes saved choices that no longer exist in a newer dataset", () => {
+    let state = reconcileSelectionState(createEmptySelectionState(), ["A", "B", "C"])
+    state = setOrderedSelectionState(state, ["C", "A", "B"])
+    state = pruneUnavailableSelectionState(state, ["A", "C"])
+
+    expect(state.selectedIds).toEqual(["A", "C"])
+    expect(state.orderedIds).toEqual(["C", "A"])
+  })
+
+  it("resets to the original selection sequence without changing membership", () => {
+    let state = reconcileSelectionState(createEmptySelectionState(), ["A", "B", "C"])
+    state = setOrderedSelectionState(state, ["C", "A", "B"])
+    state = resetSelectionOrderState(state)
+
+    expect(state.orderedIds).toEqual(["A", "B", "C"])
+    expect(state.selectedIds).toEqual(["A", "B", "C"])
+    expect(state.hasCustomOrder).toBe(false)
   })
 })

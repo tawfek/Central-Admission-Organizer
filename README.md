@@ -17,7 +17,7 @@ A modern, static React application for exploring Iraqi central-admission minimum
 - dnd-kit
 - i18next + react-i18next
 - Vite PWA
-- Vitest
+- Bun test runner
 
 ## Quick start
 
@@ -53,6 +53,8 @@ React UI
 ```
 
 The application never calls an admissions backend at runtime.
+
+Selection membership and drag order are autosaved locally in the browser. Going back to add or remove departments preserves the existing order: removed choices disappear and new choices are appended.
 
 ## Commands
 

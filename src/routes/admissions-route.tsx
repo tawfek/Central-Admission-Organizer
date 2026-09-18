@@ -1,8 +1,9 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Download, ListOrdered } from "lucide-react";
+import { CheckCircle2, Download, ListOrdered } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AppControls } from "@/components/layout/app-controls";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,13 @@ export function AdmissionsRoute() {
   const { t } = useTranslation();
   const { data = [], isLoading } = useQuery(admissionsQueryOptions);
   const [filters, setFilters] = React.useState(initialFilters);
-  const { selectedIds, setSelectedIds, setOrderedAdmissions } =
-    useAdmissionSelection();
+  const {
+    selectedIds,
+    setSelectedIds,
+    clear,
+    reconcileAvailableIds,
+    hasCustomOrder,
+  } = useAdmissionSelection();
   const navigate = useNavigate();
 
   const filtered = React.useMemo(
@@ -48,12 +54,33 @@ export function AdmissionsRoute() {
     [data],
   );
 
+  const availableIds = React.useMemo(
+    () => data.map((row) => row.sourceId),
+    [data],
+  );
+
+  React.useEffect(() => {
+    if (!isLoading && data.length > 0) {
+      reconcileAvailableIds(availableIds);
+    }
+  }, [availableIds, data.length, isLoading, reconcileAvailableIds]);
+
+  const handleSelectedIdsChange = React.useCallback(
+    (ids: string[]) => {
+      if (hasCustomOrder) {
+        const current = new Set(selectedIds);
+        const added = ids.filter((id) => !current.has(id)).length;
+        if (added > 0) {
+          toast.info(t("table.appendedToSavedOrder", { count: added }));
+        }
+      }
+      setSelectedIds(ids);
+    },
+    [hasCustomOrder, selectedIds, setSelectedIds, t],
+  );
+
   const next = () => {
     if (!canProceed(selectedIds.length)) return;
-    const selected = selectedIds
-      .map((id) => data.find((row) => String(row.key) === id))
-      .filter((row): row is NonNullable<typeof row> => Boolean(row));
-    setOrderedAdmissions(selected);
     navigate({ to: "/selection" });
   };
 
@@ -85,7 +112,7 @@ export function AdmissionsRoute() {
         <div className="flex flex-col gap-2 border-t border-zinc-100 bg-zinc-50/70 p-4 sm:flex-row sm:px-8 dark:border-zinc-800 dark:bg-zinc-950/30">
           <Button asChild variant="outline" size="sm">
             <a
-              href="/الحدود الدنيا 2025-2026.pdf"
+              href={`${import.meta.env.BASE_URL}الحدود الدنيا 2025-2026.pdf`}
               target="_blank"
               rel="noreferrer"
             >
@@ -104,7 +131,7 @@ export function AdmissionsRoute() {
             sexOptions={sexOptions}
             onChange={setFilters}
             selectedCount={selectedIds.length}
-            onClearSelection={() => setSelectedIds([])}
+            onClearSelection={clear}
           />
         </CardContent>
       </Card>
@@ -117,7 +144,7 @@ export function AdmissionsRoute() {
         <AdmissionsTable
           data={filtered}
           selectedIds={selectedIds}
-          onSelectedIdsChange={setSelectedIds}
+          onSelectedIdsChange={handleSelectedIdsChange}
           scoreFilterValue={filters.maximumPercent}
         />
       )}
@@ -129,11 +156,19 @@ export function AdmissionsRoute() {
               <div className="truncate text-sm font-semibold sm:text-base">
                 {t("table.selectedFooter", { count: selectedIds.length })}
               </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                {t("common.selected", {
-                  count: selectedIds.length,
-                  max: MAX_SELECTION,
-                })}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                <span>
+                  {t("common.selected", {
+                    count: selectedIds.length,
+                    max: MAX_SELECTION,
+                  })}
+                </span>
+                {hasCustomOrder && (
+                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {t("table.savedOrderPreserved")}
+                  </span>
+                )}
               </div>
             </div>
             <Button

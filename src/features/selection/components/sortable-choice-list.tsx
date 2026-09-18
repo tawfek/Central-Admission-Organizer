@@ -9,7 +9,7 @@ import type { Admission } from "@/features/admissions/domain/types"
 
 function SortableRow({ admission, index }: { admission: Admission; index: number }) {
   const { t } = useTranslation()
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(admission.key) })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: admission.sourceId })
 
   return (
     <div
@@ -43,17 +43,17 @@ export function SortableChoiceList({ items, onChange }: { items: Admission[]; on
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return
-    const oldIndex = items.findIndex((item) => String(item.key) === active.id)
-    const newIndex = items.findIndex((item) => String(item.key) === over.id)
+    const oldIndex = items.findIndex((item) => item.sourceId === active.id)
+    const newIndex = items.findIndex((item) => item.sourceId === over.id)
     if (oldIndex < 0 || newIndex < 0) return
     onChange(arrayMove(items, oldIndex, newIndex))
   }
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={items.map((item) => String(item.key))} strategy={verticalListSortingStrategy}>
+      <SortableContext items={items.map((item) => item.sourceId)} strategy={verticalListSortingStrategy}>
         <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          {items.map((item, index) => <SortableRow key={item.key} admission={item} index={index} />)}
+          {items.map((item, index) => <SortableRow key={item.sourceId} admission={item} index={index} />)}
         </div>
       </SortableContext>
     </DndContext>

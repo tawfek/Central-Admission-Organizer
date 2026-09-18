@@ -45,15 +45,31 @@ export function AdmissionsTable({ data, selectedIds, onSelectedIdsChange, scoreF
     }
   }, [scoreFilterValue])
 
-  const updateSelection = React.useCallback((updater: Updater<RowSelectionState>) => {
-    const next = functionalUpdate(updater, rowSelection)
-    const ids = Object.keys(next).filter((id) => next[id])
-    if (ids.length > MAX_SELECTION) {
-      toast.error(t("table.maxSelection"))
+  const commitSelection = React.useCallback((ids: string[]) => {
+    const requested = [...new Set(ids)]
+    if (requested.length <= MAX_SELECTION) {
+      onSelectedIdsChange(requested)
       return
     }
-    onSelectedIdsChange(ids)
-  }, [onSelectedIdsChange, rowSelection, t])
+
+    const requestedSet = new Set(requested)
+    const preserved = selectedIds.filter((id) => requestedSet.has(id))
+    const preservedSet = new Set(preserved)
+    const additions = requested.filter((id) => !preservedSet.has(id))
+    const room = Math.max(0, MAX_SELECTION - preserved.length)
+    const acceptedAdditions = additions.slice(0, room)
+
+    onSelectedIdsChange([...preserved, ...acceptedAdditions])
+    toast.warning(t("table.selectionLimitReached", {
+      added: acceptedAdditions.length,
+      max: MAX_SELECTION,
+    }))
+  }, [onSelectedIdsChange, selectedIds, t])
+
+  const updateSelection = React.useCallback((updater: Updater<RowSelectionState>) => {
+    const next = functionalUpdate(updater, rowSelection)
+    commitSelection(Object.keys(next).filter((id) => next[id]))
+  }, [commitSelection, rowSelection])
 
   const columns = React.useMemo<ColumnDef<Admission>[]>(() => [
     {
@@ -76,7 +92,7 @@ export function AdmissionsTable({ data, selectedIds, onSelectedIdsChange, scoreF
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     onRowSelectionChange: updateSelection,
-    getRowId: (row) => String(row.key),
+    getRowId: (row) => row.sourceId,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -84,14 +100,42 @@ export function AdmissionsTable({ data, selectedIds, onSelectedIdsChange, scoreF
   })
 
   const pageRows = table.getRowModel().rows
-  const applyPageSelection = (mode: "all" | "invert" | "odd" | "even") => {
-    const next = { ...rowSelection }
-    if (mode === "all") pageRows.forEach((row) => { next[row.id] = true })
-    if (mode === "invert") pageRows.forEach((row) => { next[row.id] = !next[row.id] })
-    if (mode === "odd" || mode === "even") {
-      pageRows.forEach((row, index) => { next[row.id] = mode === "odd" ? index % 2 === 0 : index % 2 !== 0 })
+
+  const replaceScopeSelection = (scopeIds: string[], desiredIds: string[]) => {
+    const scope = new Set(scopeIds)
+    const outside = selectedIds.filter((id) => !scope.has(id))
+    commitSelection([...outside, ...desiredIds])
+  }
+
+  const applySelectionAction = (
+    mode: "allResults" | "clearResults" | "all" | "invert" | "odd" | "even",
+  ) => {
+    if (mode === "allResults") {
+      commitSelection([...selectedIds, ...data.map((row) => row.sourceId)])
+      setSelectionAction("")
+      return
     }
-    updateSelection(next)
+
+    if (mode === "clearResults") {
+      const filtered = new Set(data.map((row) => row.sourceId))
+      onSelectedIdsChange(selectedIds.filter((id) => !filtered.has(id)))
+      setSelectionAction("")
+      return
+    }
+
+    const pageIds = pageRows.map((row) => row.id)
+    if (mode === "all") {
+      commitSelection([...selectedIds, ...pageIds])
+    } else if (mode === "invert") {
+      const selected = new Set(selectedIds)
+      replaceScopeSelection(pageIds, pageIds.filter((id) => !selected.has(id)))
+    } else {
+      replaceScopeSelection(
+        pageIds,
+        pageIds.filter((_, index) => mode === "odd" ? index % 2 === 0 : index % 2 !== 0),
+      )
+    }
+
     setSelectionAction("")
   }
 
@@ -102,9 +146,17 @@ export function AdmissionsTable({ data, selectedIds, onSelectedIdsChange, scoreF
           <Badge variant={data.length < 50 ? "destructive" : "success"}>{t("common.results", { count: data.length })}</Badge>
           <span className="text-sm text-zinc-500 dark:text-zinc-400">{t("common.selected", { count: selectedIds.length, max: MAX_SELECTION })}</span>
         </div>
-        <Select value={selectionAction} onValueChange={(value) => { setSelectionAction(value); applyPageSelection(value as "all" | "invert" | "odd" | "even") }}>
-          <SelectTrigger className="w-full sm:w-[210px]"><SelectValue placeholder={t("table.pageActions")} /></SelectTrigger>
+        <Select
+          value={selectionAction}
+          onValueChange={(value) => {
+            setSelectionAction(value)
+            applySelectionAction(value as "allResults" | "clearResults" | "all" | "invert" | "odd" | "even")
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-[250px]"><SelectValue placeholder={t("table.selectionActions")} /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="allResults">{t("table.selectAllResults", { count: data.length })}</SelectItem>
+            <SelectItem value="clearResults">{t("table.clearFilteredResults", { count: data.length })}</SelectItem>
             <SelectItem value="all">{t("table.selectAllPage")}</SelectItem>
             <SelectItem value="invert">{t("table.invertPage")}</SelectItem>
             <SelectItem value="odd">{t("table.selectOdd")}</SelectItem>
