@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowDownWideNarrow, ArrowRight, CheckCircle2, MapPin, MessageCircle, Printer, RotateCcw, Send, Undo2 } from "lucide-react"
+import { ArrowDownWideNarrow, ArrowRight, CheckCircle2, Link2, MapPin, Printer, RotateCcw, Undo2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { useTranslation } from "react-i18next"
@@ -17,7 +17,7 @@ import { SortableChoiceList } from "@/features/selection/components/sortable-cho
 import { PrintableForm } from "@/features/selection/components/printable-form"
 import { IRAQ_LOCATIONS, findIraqLocation } from "@/features/selection/data/iraq-locations"
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
-import { buildSelectionShareText, buildSelectionShareUrl, buildTelegramShareText, openTelegramShare, openWhatsAppShare, readSharedSelectionIds } from "@/features/selection/domain/share"
+import { buildSelectionShareUrl, copyTextToClipboard, readSharedSelectionIds } from "@/features/selection/domain/share"
 
 export function SelectionRoute() {
   const { t, i18n } = useTranslation()
@@ -157,9 +157,16 @@ export function SelectionRoute() {
   }
 
   const publicAppUrl = getPublicAppUrl()
-  const shareText = buildSelectionShareText(orderedAdmissions, t, publicAppUrl)
   const selectionShareUrl = buildSelectionShareUrl(orderedAdmissions, publicAppUrl)
-  const telegramShareText = buildTelegramShareText(orderedAdmissions, t)
+
+  const copySelectionLink = async () => {
+    try {
+      await copyTextToClipboard(selectionShareUrl)
+      toast.success(t("selection.linkCopied"))
+    } catch {
+      toast.error(t("selection.copyLinkFailed"))
+    }
+  }
 
   return (
     <main className="print-shell mx-auto min-h-screen w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
@@ -173,10 +180,15 @@ export function SelectionRoute() {
           <h1 className="font-bold">{t("selection.title")}</h1>
           <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{t("selection.description")}</p>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-          <Button onClick={() => window.print()}><Printer className="h-4 w-4" />{t("selection.print")}</Button>
-          <Button variant="outline" onClick={() => openWhatsAppShare(shareText)}><MessageCircle className="h-4 w-4" />{t("selection.whatsapp")}</Button>
-          <Button variant="outline" onClick={() => openTelegramShare(telegramShareText, selectionShareUrl)}><Send className="h-4 w-4" />{t("selection.telegram")}</Button>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <Button onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            {t("selection.print")}
+          </Button>
+          <Button variant="outline" onClick={copySelectionLink}>
+            <Link2 className="h-4 w-4" />
+            {t("selection.copyLink")}
+          </Button>
         </div>
       </div>
 
