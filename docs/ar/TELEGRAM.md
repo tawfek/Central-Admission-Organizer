@@ -40,44 +40,13 @@ Web App URL: https://tawfek.github.io/Central-Admission-Organizer/
 
 لا تُحفظ بيانات الجامعات نفسها في Telegram CloudStorage؛ يتم حفظ IDs وترتيبها فقط.
 
-## الحسابات الموثوقة والإشعارات
+## معمارية بدون Backend
 
-الواجهة لا تعتبر `initDataUnsafe` مصدرًا موثوقًا لتسجيل الدخول. يمكن استخدام معلومات اللغة والاسم منه للعرض فقط.
+تطبيق Telegram Mini App يعمل عمدًا بدون Backend خاص بالتطبيق. GitHub Pages يستضيف التطبيق كاملًا، بينما توفر Telegram Mini App APIs وظائف المظهر والأزرار الأصلية وHaptic Feedback وCloudStorage مباشرة من جهة العميل.
 
-لإضافة حسابات Telegram موثوقة أو إرسال إشعارات من البوت، انشر Backend واضبط:
+بيانات مستخدم Telegram المتاحة داخل Mini App تستخدم فقط لتحسين العرض مثل اختيار اللغة الأولي وإظهار الاسم الأول، ولا تعتبر حسابًا موثقًا داخل النظام.
 
-```env
-VITE_TELEGRAM_API_URL=https://api.example.com
-```
-
-بعدها ترسل الواجهة قيمة `initData` الأصلية إلى:
-
-```http
-POST /telegram/session
-Content-Type: application/json
-
-{
-  "initData": "..."
-}
-```
-
-يجب على السيرفر التحقق من Telegram signature و `auth_date` قبل إنشاء Session. يجب أن يبقى Bot Token في السيرفر فقط ولا يوضع أبدًا في متغير `VITE_*` أو داخل المستودع.
-
-الاستجابة المتوقعة:
-
-```json
-{
-  "user": {
-    "id": "123456789",
-    "firstName": "Tawfeeq",
-    "username": "example",
-    "languageCode": "ar"
-  },
-  "notificationsEnabled": false
-}
-```
-
-واجهة Telegram الحالية توفر أيضًا `requestWriteAccess()` لاستخدامها لاحقًا عند إضافة واجهة اشتراك بالإشعارات. إرسال رسائل البوت فعليًا يحتاج Backend آمن وBot API.
+لا يحتاج هذا الـ Frontend إلى Bot Token ولا يجب حفظه داخل المستودع.
 
 ## روابط الاختيارات المشتركة
 

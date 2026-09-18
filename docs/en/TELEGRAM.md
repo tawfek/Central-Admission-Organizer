@@ -40,44 +40,13 @@ Inside Telegram, Bot API 6.9+ clients also synchronize the same compact ID-only 
 
 The cloud payload stores only selected/order IDs and ordering metadata. Admission records themselves remain in the generated static dataset.
 
-## Secure accounts and notifications
+## Static-only architecture
 
-The frontend deliberately does **not** trust `initDataUnsafe` for authentication. It may use its language/user fields only for presentation.
+The Telegram Mini App intentionally uses no application backend. GitHub Pages serves the complete app, and Telegram's client-side Mini App APIs provide theme, native controls, haptics and CloudStorage.
 
-For verified Telegram accounts or bot notifications, deploy a server and configure:
+Telegram user fields exposed to the Mini App are used only for presentation conveniences such as initial language and showing the user's first name. The app does not treat them as a verified application account.
 
-```env
-VITE_TELEGRAM_API_URL=https://api.example.com
-```
-
-The frontend will then POST the raw Telegram `initData` to:
-
-```http
-POST /telegram/session
-Content-Type: application/json
-
-{
-  "initData": "..."
-}
-```
-
-The server must validate Telegram's signature and `auth_date` before creating a session. The bot token must remain server-side and must never be stored in a `VITE_*` variable or committed to this repository.
-
-Expected session response:
-
-```json
-{
-  "user": {
-    "id": "123456789",
-    "firstName": "Tawfeeq",
-    "username": "example",
-    "languageCode": "ar"
-  },
-  "notificationsEnabled": false
-}
-```
-
-The client already exposes `requestWriteAccess()` through the Telegram integration provider for a future notification opt-in UI. Sending bot messages still requires the secure server/Bot API layer.
+The bot token is not needed by this frontend and must not be stored in the repository.
 
 ## Shared selection links
 

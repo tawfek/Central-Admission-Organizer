@@ -24,7 +24,7 @@ Percentage sorting creates a new array ordered by descending score. Location pri
 
 ## Backend
 
-There is no runtime admissions backend. `admissions.json` is imported by Vite and becomes part of the application bundle. `admission-import-report.json` records deterministic extraction diagnostics for the canonical PDF. A backend can be introduced later by implementing `AdmissionRepository.list()` without changing the screens.
+There is no runtime backend. `admissions.json` is imported by Vite and becomes part of the application bundle, while `admission-import-report.json` records deterministic extraction diagnostics for the canonical PDF. The deployed application remains fully static.
 
 
 ## Selection state and persistence
@@ -51,4 +51,4 @@ Inside Telegram the adapter initializes `Telegram.WebApp`, follows Telegram's sy
 
 Selection persistence remains local-first. Telegram clients that support Bot API 6.9+ additionally mirror the compact versioned selection state to `CloudStorage`, giving the bot/user a cross-device backup without introducing a runtime admissions backend.
 
-Verified Telegram identity and outbound bot notifications are a separate security boundary. If `VITE_TELEGRAM_API_URL` is configured, the frontend sends raw `initData` to `POST /telegram/session`; that server must validate Telegram's signature and freshness before trusting the user. Bot tokens are never part of the frontend.
+The Telegram integration is intentionally client-only. It does not require an application backend or a bot token in the frontend.

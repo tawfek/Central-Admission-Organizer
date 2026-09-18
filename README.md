@@ -28,7 +28,7 @@ The deployed app is also configured for Telegram:
 https://t.me/LuckySix7_Bot/admission
 ```
 
-The bot token is intentionally not stored in this repository. Any future Bot API backend must keep it server-side.
+The frontend does not require the bot token. The application remains fully static on GitHub Pages.
 
 ## Quick start
 
