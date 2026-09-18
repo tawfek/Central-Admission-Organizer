@@ -18,7 +18,11 @@ export default defineConfig(() => {
       VitePWA({
         registerType: "autoUpdate",
 
-        includeAssets: ["favicon-32x32.png", "round.png", "*.pdf"],
+        includeAssets: ["favicon-32x32.png", "round.png"],
+
+        workbox: {
+          globIgnores: ["**/*.pdf"],
+        },
 
         manifest: {
           name: "Central Admission Organizer | ترتيب استمارة التقديم",
