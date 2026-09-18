@@ -9,6 +9,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { AdmissionsRoute } from "@/routes/admissions-route"
 import { SelectionRoute } from "@/routes/selection-route"
 import { NotFoundRoute } from "@/routes/not-found-route"
+import { normalizeTelegramLaunchHash } from "@/integrations/telegram/telegram"
 
 const rootRoute = createRootRoute({
   component: AppShell,
@@ -31,6 +32,8 @@ const routeTree = rootRoute.addChildren([
   admissionsRoute,
   selectionRoute,
 ])
+
+normalizeTelegramLaunchHash()
 
 const hashHistory = createHashHistory()
 

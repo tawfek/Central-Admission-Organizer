@@ -8,7 +8,7 @@ import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "
 import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
 import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
 import { buildSelectionShareUrl, readSharedSelectionIds } from "@/features/selection/domain/share"
-import { isTelegramPlatform } from "@/integrations/telegram/telegram"
+import { isTelegramLaunchHash, isTelegramPlatform } from "@/integrations/telegram/telegram"
 import { buildTelegramMiniAppUrl, TELEGRAM_MINI_APP_URL } from "@/config/telegram"
 import { normalizeAdmissions } from "../scripts/admission-pdf/normalize"
 import { validateAdmissions } from "../scripts/admission-pdf/validate"
@@ -196,6 +196,14 @@ describe("share links", () => {
 
 
 describe("telegram integration", () => {
+  it("detects Telegram launch fragments without confusing app routes", () => {
+    expect(isTelegramLaunchHash("#tgWebAppData=abc&tgWebAppVersion=9.1&tgWebAppPlatform=android")).toBe(true)
+    expect(isTelegramLaunchHash("#tgWebAppVersion=9.1&tgWebAppPlatform=ios")).toBe(true)
+    expect(isTelegramLaunchHash("#/")).toBe(false)
+    expect(isTelegramLaunchHash("#/selection?choices=1%2C2")).toBe(false)
+    expect(isTelegramLaunchHash("")).toBe(false)
+  })
+
   it("detects Telegram platforms without treating a normal browser as Telegram", () => {
     expect(isTelegramPlatform("android")).toBe(true)
     expect(isTelegramPlatform("ios")).toBe(true)

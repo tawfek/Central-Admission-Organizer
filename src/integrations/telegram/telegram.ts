@@ -46,3 +46,36 @@ export function writeTelegramCloudSelection(value: string) {
     })
   })
 }
+
+
+const TELEGRAM_LAUNCH_HASH_KEYS = [
+  "tgWebAppData=",
+  "tgWebAppVersion=",
+  "tgWebAppPlatform=",
+  "tgWebAppThemeParams=",
+  "tgWebAppStartParam=",
+]
+
+export function isTelegramLaunchHash(hash: string) {
+  if (!hash || hash.startsWith("#/")) return false
+  return TELEGRAM_LAUNCH_HASH_KEYS.some((key) => hash.includes(key))
+}
+
+/**
+ * Telegram launches Mini Apps with its initialization payload in the URL hash.
+ * This app also uses hash routing, so the Telegram fragment would otherwise be
+ * interpreted as a TanStack Router route and render the 404 page.
+ *
+ * telegram-web-app.js is loaded synchronously in <head>, so Telegram has already
+ * parsed the launch payload before this function replaces the visible fragment.
+ */
+export function normalizeTelegramLaunchHash() {
+  if (typeof window === "undefined") return false
+  if (!isTelegramLaunchHash(window.location.hash)) return false
+
+  const nextUrl =
+    `${window.location.pathname}${window.location.search}#/`
+
+  window.history.replaceState(window.history.state, "", nextUrl)
+  return true
+}
