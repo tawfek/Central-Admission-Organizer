@@ -16,7 +16,7 @@ The original Gatsby/Ant Design application remains the behavioral reference, but
 
 ## Updated behavior
 
-- Data is generated from `src/data/raw/*.txt` and imported locally from `admissions.raw.json`; there is no runtime admissions backend.
+- Data is extracted directly from the canonical `public/admission-minimums.pdf`, validated, and bundled from semantic `admissions.json`; there is no runtime admissions backend or TXT intermediary.
 - Branch filters are derived from the current data (`علمي`, `ادبي`, `فنون`, `مهني`, or any future value) instead of the obsolete hard-coded `احيائي` / `تطبيقي` list.
 - Arabic/English i18n with RTL/LTR switching.
 - Light/dark/system themes.

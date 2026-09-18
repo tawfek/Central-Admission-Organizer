@@ -1,5 +1,4 @@
-import rawAdmissions from "./admissions.raw.json"
-import { normalizeLegacyAdmission } from "../domain/admission"
+import admissions from "./admissions.json"
 import type { Admission } from "../domain/types"
 
 export interface AdmissionRepository {
@@ -12,6 +11,6 @@ export interface AdmissionRepository {
  */
 export const localAdmissionRepository: AdmissionRepository = {
   async list() {
-    return (rawAdmissions as Array<Array<string | number | null>>).map(normalizeLegacyAdmission)
-  }
+    return admissions as Admission[]
+  },
 }

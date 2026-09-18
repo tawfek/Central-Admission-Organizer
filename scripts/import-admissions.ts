@@ -1,225 +1,95 @@
-import { readdir, mkdir, writeFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { extractAdmissionsFromPdf } from "./admission-pdf/parser"
+import { normalizeAdmissions } from "./admission-pdf/normalize"
+import type { AdmissionImportReport } from "./admission-pdf/types"
+import { validateAdmissions } from "./admission-pdf/validate"
 
-const RAW_DIR = path.resolve("src/data/raw")
+const DEFAULT_PDF = path.resolve("public/admission-minimums.pdf")
+const OUTPUT_DIR = path.resolve("src/features/admissions/data")
+const OUTPUT_FILE = path.join(OUTPUT_DIR, "admissions.json")
+const REPORT_FILE = path.join(OUTPUT_DIR, "admission-import-report.json")
+const REJECTED_FILE = path.join(OUTPUT_DIR, "admission-import-rejected.json")
 
-const OUTPUT_FILE = path.resolve(
-  "src/features/admissions/data/admissions.raw.json",
-)
-
-const LINES_PER_RECORD = 7
-
-type RawAdmissionRow = [
-  globalId: string,
-  sourceId: string,
-  name: string,
-  degreeAll: string,
-  percent: string,
-  code: string,
-  branch: string,
-  sex: string,
-]
-
-function naturalSort(a: string, b: string) {
-  return a.localeCompare(b, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  })
+function parseArgs() {
+  const args = process.argv.slice(2) as string[]
+  return {
+    allowRejected: args.includes("--allow-rejected"),
+    pdfPath: path.resolve(args.find((arg) => !arg.startsWith("--")) ?? DEFAULT_PDF),
+  }
 }
 
-function cleanLine(value: string) {
-  return value
-    .replace(/^\uFEFF/, "")
-    .replace(/\r/g, "")
-    .trim()
-}
-
-function parseNumber(value: string, label: string, file: string) {
-  const number = Number(value)
-
-  if (!Number.isFinite(number)) {
-    throw new Error(
-      `Invalid ${label} "${value}" in ${file}`,
-    )
-  }
-
-  return number
-}
-
-async function parseFile(
-  filePath: string,
-  globalOffset: number,
-): Promise<RawAdmissionRow[]> {
-  const fileName = path.basename(filePath)
-
-  const text = await Bun.file(filePath).text()
-
-  const lines = text
-    .split(/\r?\n/)
-    .map(cleanLine)
-    .filter((line) => line.length > 0)
-
-  if (lines.length % LINES_PER_RECORD !== 0) {
-    throw new Error(
-      [
-        `Invalid file: ${fileName}`,
-        `Expected records of ${LINES_PER_RECORD} lines.`,
-        `Found ${lines.length} non-empty lines.`,
-        `Remaining lines: ${lines.length % LINES_PER_RECORD}`,
-      ].join("\n"),
-    )
-  }
-
-  const rows: RawAdmissionRow[] = []
-
-  for (let index = 0; index < lines.length; index += LINES_PER_RECORD) {
-    const sourceId = lines[index]
-    const name = lines[index + 1]
-    const degreeAll = lines[index + 2]
-    const percent = lines[index + 3]
-    const code = lines[index + 4]
-    const branch = lines[index + 5]
-    const sex = lines[index + 6]
-
-    const recordNumber = index / LINES_PER_RECORD + 1
-
-    if (!sourceId) {
-      throw new Error(
-        `Missing source id in ${fileName}, record ${recordNumber}`,
-      )
-    }
-
-    if (!name) {
-      throw new Error(
-        `Missing name in ${fileName}, record ${recordNumber}`,
-      )
-    }
-
-    parseNumber(
-      sourceId,
-      "source id",
-      fileName,
-    )
-
-    parseNumber(
-      degreeAll,
-      "degree",
-      fileName,
-    )
-
-    const parsedPercent = parseNumber(
-      percent,
-      "percent",
-      fileName,
-    )
-
-    parseNumber(
-      code,
-      "code",
-      fileName,
-    )
-
-
-
-    if (!branch) {
-      throw new Error(
-        `Missing branch in ${fileName}, record ${recordNumber}`,
-      )
-    }
-
-    if (!sex) {
-      throw new Error(
-        `Missing sex in ${fileName}, record ${recordNumber}`,
-      )
-    }
-
-    const globalId = globalOffset + rows.length + 1
-
-    rows.push([
-      String(globalId),
-      sourceId,
-      name,
-      degreeAll,
-      percent,
-      code,
-      branch,
-      sex,
-    ])
-  }
-
-  return rows
+function relativeToProject(filePath: string) {
+  return path.relative(process.cwd(), filePath).replaceAll("\\", "/")
 }
 
 async function main() {
-  console.log(`Reading admission files from:`)
-  console.log(RAW_DIR)
-  console.log("")
+  const { allowRejected, pdfPath } = parseArgs()
+  const pdf = await readFile(pdfPath)
+  const sourceStat = await stat(pdfPath)
+  const sha256 = createHash("sha256").update(pdf).digest("hex")
 
-  const directoryEntries = await readdir(RAW_DIR, {
-    withFileTypes: true,
-  })
+  console.log(`Reading admission PDF: ${relativeToProject(pdfPath)}`)
 
-  const files = directoryEntries
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        entry.name.toLowerCase().endsWith(".txt"),
-    )
-    .map((entry) => entry.name)
-    .sort(naturalSort)
+  const extraction = await extractAdmissionsFromPdf(new Uint8Array(pdf))
+  const admissions = normalizeAdmissions(extraction.records)
+  const validation = validateAdmissions(admissions)
 
-  if (files.length === 0) {
-    throw new Error(
-      `No .txt files were found inside ${RAW_DIR}`,
-    )
+  await mkdir(OUTPUT_DIR, { recursive: true })
+
+  if (extraction.rejectedRows.length > 0) {
+    await writeFile(REJECTED_FILE, `${JSON.stringify(extraction.rejectedRows, null, 2)}\n`, "utf8")
+    if (!allowRejected) {
+      throw new Error(
+        `${extraction.rejectedRows.length} PDF row(s) could not be parsed. ` +
+        `Review ${relativeToProject(REJECTED_FILE)} or rerun with --allow-rejected while debugging.`,
+      )
+    }
+  } else {
+    await rm(REJECTED_FILE, { force: true })
   }
 
-  console.log(`Found ${files.length} TXT files:`)
-
-  for (const file of files) {
-    console.log(`  - ${file}`)
+  const report: AdmissionImportReport = {
+    schemaVersion: 1,
+    source: {
+      file: relativeToProject(pdfPath),
+      sha256,
+      sizeBytes: sourceStat.size,
+    },
+    extraction: {
+      physicalPages: extraction.physicalPages,
+      tablePages: extraction.tablePages,
+      records: admissions.length,
+      rejectedRows: extraction.rejectedRows.length,
+      duplicateSourceIds: validation.duplicateSourceIds.length,
+    },
+    values: {
+      branches: validation.branches,
+      sexes: validation.sexes,
+    },
+    pages: extraction.pages,
   }
 
-  console.log("")
+  await writeFile(OUTPUT_FILE, `${JSON.stringify(admissions, null, 2)}\n`, "utf8")
+  await writeFile(REPORT_FILE, `${JSON.stringify(report, null, 2)}\n`, "utf8")
 
-  const allRows: RawAdmissionRow[] = []
-
-  for (const fileName of files) {
-    const filePath = path.join(RAW_DIR, fileName)
-
-    const rows = await parseFile(
-      filePath,
-      allRows.length,
-    )
-
-    allRows.push(...rows)
-
-    console.log(
-      `✓ ${fileName}: ${rows.length} records`,
-    )
+  console.log(`Physical pages: ${extraction.physicalPages}`)
+  console.log(`Table pages:    ${extraction.tablePages}`)
+  for (const page of extraction.pages) {
+    console.log(`  PDF page ${page.physicalPage}: ${page.records} records`)
   }
-
-  await mkdir(path.dirname(OUTPUT_FILE), {
-    recursive: true,
-  })
-
-  await writeFile(
-    OUTPUT_FILE,
-    JSON.stringify(allRows, null, 2),
-    "utf8",
-  )
-
   console.log("")
-  console.log("Import completed.")
-  console.log(`Files:   ${files.length}`)
-  console.log(`Records: ${allRows.length}`)
-  console.log(`Output:  ${OUTPUT_FILE}`)
+  console.log(`Records:        ${admissions.length}`)
+  console.log(`Rejected rows:  ${extraction.rejectedRows.length}`)
+  console.log(`Duplicate IDs:  ${validation.duplicateSourceIds.length}`)
+  console.log(`Output:         ${relativeToProject(OUTPUT_FILE)}`)
+  console.log(`Report:         ${relativeToProject(REPORT_FILE)}`)
 }
 
 main().catch((error) => {
   console.error("")
-  console.error("Admission import failed.")
+  console.error("Admission PDF import failed.")
   console.error(error)
-
   process.exit(1)
 })

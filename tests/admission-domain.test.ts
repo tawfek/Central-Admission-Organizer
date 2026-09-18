@@ -1,34 +1,89 @@
 import { describe, expect, it } from "bun:test"
-import { applyAdmissionFilters, normalizeLegacyAdmission, uniqueAdmissionValues } from "@/features/admissions/domain/admission"
+import admissions from "@/features/admissions/data/admissions.json"
+import importReport from "@/features/admissions/data/admission-import-report.json"
+import { applyAdmissionFilters, uniqueAdmissionValues } from "@/features/admissions/domain/admission"
 import { canProceed, isSelectionWithinLimit } from "@/features/admissions/domain/selection"
+import type { Admission } from "@/features/admissions/domain/types"
 import { prioritizeByCustomTerm, prioritizeByLocation, sortByPercentage } from "@/features/selection/domain/order"
 import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
 import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
 import { buildSelectionShareUrl, readSharedSelectionIds } from "@/features/selection/domain/share"
+import { normalizeAdmissions } from "../scripts/admission-pdf/normalize"
+import { validateAdmissions } from "../scripts/admission-pdf/validate"
 
-const row = ["1", "1\r\n", "جامعة بغداد/كلية الطب\r\n", "699.5\r\n", "99.9", "297\r\n", "علمي\r\n", "مختلط\r\n"]
+const base: Admission = {
+  sourceId: "1",
+  code: "297",
+  name: "جامعة بغداد/كلية الطب",
+  degreeAll: 699.5,
+  percent: 99.9,
+  type: "علمي",
+  sex: "مختلط",
+}
 
-describe("admission domain", () => {
-  it("maps positional JSON and strips CRLF", () => {
-    expect(normalizeLegacyAdmission(row, 0)).toMatchObject({ key: 0, id: 1, sourceId: "1", code: "297", name: "جامعة بغداد/كلية الطب", percent: 99.9, type: "علمي", sex: "مختلط" })
+describe("generated admission data", () => {
+  it("ships semantic admission objects instead of positional rows", () => {
+    expect(admissions[0]).toEqual({
+      sourceId: "1",
+      code: "295",
+      name: "جامعة بغداد / كلية الطب",
+      degreeAll: 709.84,
+      percent: 101.41,
+      type: "علمي",
+      sex: "مختلط",
+    })
   })
 
+  it("matches the deterministic PDF import report", () => {
+    expect(admissions).toHaveLength(importReport.extraction.records)
+    expect(importReport.extraction.records).toBe(1222)
+    expect(importReport.extraction.rejectedRows).toBe(0)
+    expect(importReport.extraction.duplicateSourceIds).toBe(0)
+    expect(importReport.extraction.tablePages).toBe(24)
+  })
+
+  it("normalizes extracted PDF rows into application records", () => {
+    expect(normalizeAdmissions([{
+      university: "جامعة بغداد / كلية الطب",
+      total: "709.84",
+      average: "101.41",
+      preference: "295",
+      branch: "علمي",
+      gender: "مختلط",
+    }])).toEqual([{
+      sourceId: "1",
+      code: "295",
+      name: "جامعة بغداد / كلية الطب",
+      degreeAll: 709.84,
+      percent: 101.41,
+      type: "علمي",
+      sex: "مختلط",
+    }])
+  })
+
+  it("validates unique IDs and derives dataset values", () => {
+    const result = validateAdmissions([base, { ...base, sourceId: "2", type: "فنون", sex: "انثى" }])
+    expect(result.duplicateSourceIds).toEqual([])
+    expect(result.branches).toEqual(["علمي", "فنون"])
+    expect(result.sexes).toEqual(["انثى", "مختلط"])
+  })
+})
+
+describe("admission domain", () => {
   it("filters by maximum score", () => {
-    const data = [normalizeLegacyAdmission(row, 0), { ...normalizeLegacyAdmission(row, 1), percent: 75, name: "جامعة كركوك/هندسة" }]
+    const data = [base, { ...base, sourceId: "2", percent: 75, name: "جامعة كركوك/هندسة" }]
     const filtered = applyAdmissionFilters(data, { maximumPercent: "80", branch: "", sex: "", name: "" })
     expect(filtered.map((item) => item.percent)).toEqual([75])
   })
 
   it("combines branch, sex and name filters", () => {
-    const item = normalizeLegacyAdmission(row, 0)
-    expect(applyAdmissionFilters([item], { maximumPercent: "", branch: "علمي", sex: "مختلط", name: "طب" })).toHaveLength(1)
-    expect(applyAdmissionFilters([item], { maximumPercent: "", branch: "ادبي", sex: "مختلط", name: "طب" })).toHaveLength(0)
+    expect(applyAdmissionFilters([base], { maximumPercent: "", branch: "علمي", sex: "مختلط", name: "طب" })).toHaveLength(1)
+    expect(applyAdmissionFilters([base], { maximumPercent: "", branch: "ادبي", sex: "مختلط", name: "طب" })).toHaveLength(0)
   })
 
   it("derives branch values from the dataset", () => {
-    const scientific = normalizeLegacyAdmission(row, 0)
-    const arts = { ...scientific, key: 2, type: "فنون" }
-    expect(uniqueAdmissionValues([scientific, arts], "type")).toEqual(["علمي", "فنون"])
+    const arts = { ...base, sourceId: "2", type: "فنون" }
+    expect(uniqueAdmissionValues([base, arts], "type")).toEqual(["علمي", "فنون"])
   })
 
   it("preserves the runtime next-step threshold and 50 selection cap", () => {
@@ -40,12 +95,11 @@ describe("admission domain", () => {
 })
 
 describe("selection ordering", () => {
-  const base = normalizeLegacyAdmission(row, 0)
-  const items = [
-    { ...base, key: 1, name: "جامعة بغداد / طب", percent: 90 },
-    { ...base, key: 2, name: "جامعة كركوك / هندسة", percent: 95 },
-    { ...base, key: 3, name: "جامعة كركوك / علوم", percent: 80 },
-    { ...base, key: 4, name: "جامعة البصرة / قانون", percent: 85 }
+  const items: Admission[] = [
+    { ...base, sourceId: "1", name: "جامعة بغداد / طب", percent: 90 },
+    { ...base, sourceId: "2", name: "جامعة كركوك / هندسة", percent: 95 },
+    { ...base, sourceId: "3", name: "جامعة كركوك / علوم", percent: 80 },
+    { ...base, sourceId: "4", name: "جامعة البصرة / قانون", percent: 85 },
   ]
 
   it("sorts percentage highest first", () => {
@@ -56,22 +110,21 @@ describe("selection ordering", () => {
     const kirkuk = IRAQ_LOCATIONS.find((location) => location.id === "kirkuk")!
     const result = prioritizeByLocation(items, kirkuk)
     expect(result.matches).toBe(2)
-    expect(result.items.map((item) => item.key)).toEqual([2, 3, 1, 4])
+    expect(result.items.map((item) => item.sourceId)).toEqual(["2", "3", "1", "4"])
   })
 
   it("prioritizes any custom city text", () => {
     const result = prioritizeByCustomTerm(items, "بغداد")
     expect(result.matches).toBe(1)
-    expect(result.items[0]?.key).toBe(1)
+    expect(result.items[0]?.sourceId).toBe("1")
   })
 
   it("resolves common English city names to Arabic source names", () => {
     const result = prioritizeByCustomTerm(items, "Kirkuk")
     expect(result.matches).toBe(2)
-    expect(result.items.slice(0, 2).map((item) => item.key)).toEqual([2, 3])
+    expect(result.items.slice(0, 2).map((item) => item.sourceId)).toEqual(["2", "3"])
   })
 })
-
 
 describe("persistent selection state", () => {
   it("preserves the existing manual order, removes deselected items, and appends new choices", () => {
@@ -114,10 +167,8 @@ describe("persistent selection state", () => {
   })
 })
 
-
 describe("share links", () => {
   it("encodes the ordered source IDs in a short share URL", () => {
-    const base = normalizeLegacyAdmission(row, 0)
     const items = [
       { ...base, sourceId: "103" },
       { ...base, sourceId: "271" },

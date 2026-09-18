@@ -17,7 +17,7 @@ bun install
 bun run build
 ```
 
-The build command regenerates the JSON dataset before Vite builds the site.
+The build command extracts and validates the canonical `public/admission-minimums.pdf`, regenerates the JSON dataset and import report, then runs the Vite build.
 
 Upload the `dist/` directory to any static host such as Cloudflare Pages, Netlify, Vercel static hosting, GitHub Pages (with appropriate base-path configuration), or a normal web server.
 

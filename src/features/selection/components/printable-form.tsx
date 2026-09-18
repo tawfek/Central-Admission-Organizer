@@ -21,7 +21,7 @@ export function PrintableForm({ items }: { items: Admission[] }) {
           </thead>
           <tbody>
             {items.map((item, index) => (
-              <tr key={item.key} className="border-b border-zinc-200 dark:border-zinc-800">
+              <tr key={item.sourceId} className="border-b border-zinc-200 dark:border-zinc-800">
                 <td className="p-2 font-semibold">{index + 1}</td>
                 <td className="p-2">{item.name}</td>
                 <td className="p-2 text-center font-semibold">{item.percent}%</td>

@@ -2,10 +2,10 @@
 
 ## Principles
 
-The frontend treats admission data as a local data source behind a repository contract. UI components do not know whether the data came from JSON, TXT files, or a future API.
+The frontend treats admission data as a local data source behind a repository contract. PDF extraction is a build-time concern and never leaks into UI components.
 
 ```text
-Raw TXT files → importer → generated JSON → repository → TanStack Query → features/routes
+Canonical PDF → coordinate parser → validation → generated JSON → repository → TanStack Query → features/routes
 ```
 
 ## Main areas
@@ -24,7 +24,7 @@ Percentage sorting creates a new array ordered by descending score. Location pri
 
 ## Backend
 
-There is no runtime admissions backend. `admissions.raw.json` is imported by Vite and becomes part of the application bundle. A backend can be introduced later by implementing `AdmissionRepository.list()` without changing the screens.
+There is no runtime admissions backend. `admissions.json` is imported by Vite and becomes part of the application bundle. `admission-import-report.json` records deterministic extraction diagnostics for the canonical PDF. A backend can be introduced later by implementing `AdmissionRepository.list()` without changing the screens.
 
 
 ## Selection state and persistence

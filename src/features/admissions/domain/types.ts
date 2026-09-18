@@ -1,12 +1,9 @@
 export interface Admission {
-  key: number
-  id: number
   sourceId: string
   code: string
   name: string
-  degreeAll: number | null
+  degreeAll: number
   percent: number
-  rawType: string
   type: string
   sex: string
 }

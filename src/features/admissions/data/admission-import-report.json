@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "file": "public/admission-minimums.pdf",
+    "sha256": "bf3bab385ac5f46ad2569f54f09527d1fee131b245dcf315cce6f55df663955f",
+    "sizeBytes": 1933190
+  },
+  "extraction": {
+    "physicalPages": 25,
+    "tablePages": 24,
+    "records": 1222,
+    "rejectedRows": 0,
+    "duplicateSourceIds": 0
+  },
+  "values": {
+    "branches": [
+      "ادبي",
+      "علمي",
+      "فنون"
+    ],
+    "sexes": [
+      "انثى",
+      "ذكر",
+      "مختلط"
+    ]
+  },
+  "pages": [
+    {
+      "physicalPage": 2,
+      "tablePage": 1,
+      "records": 51
+    },
+    {
+      "physicalPage": 3,
+      "tablePage": 2,
+      "records": 51
+    },
+    {
+      "physicalPage": 4,
+      "tablePage": 3,
+      "records": 51
+    },
+    {
+      "physicalPage": 5,
+      "tablePage": 4,
+      "records": 51
+    },
+    {
+      "physicalPage": 6,
+      "tablePage": 5,
+      "records": 51
+    },
+    {
+      "physicalPage": 7,
+      "tablePage": 6,
+      "records": 51
+    },
+    {
+      "physicalPage": 8,
+      "tablePage": 7,
+      "records": 51
+    },
+    {
+      "physicalPage": 9,
+      "tablePage": 8,
+      "records": 51
+    },
+    {
+      "physicalPage": 10,
+      "tablePage": 9,
+      "records": 51
+    },
+    {
+      "physicalPage": 11,
+      "tablePage": 10,
+      "records": 51
+    },
+    {
+      "physicalPage": 12,
+      "tablePage": 11,
+      "records": 51
+    },
+    {
+      "physicalPage": 13,
+      "tablePage": 12,
+      "records": 51
+    },
+    {
+      "physicalPage": 14,
+      "tablePage": 13,
+      "records": 51
+    },
+    {
+      "physicalPage": 15,
+      "tablePage": 14,
+      "records": 51
+    },
+    {
+      "physicalPage": 16,
+      "tablePage": 15,
+      "records": 51
+    },
+    {
+      "physicalPage": 17,
+      "tablePage": 16,
+      "records": 51
+    },
+    {
+      "physicalPage": 18,
+      "tablePage": 17,
+      "records": 51
+    },
+    {
+      "physicalPage": 19,
+      "tablePage": 18,
+      "records": 51
+    },
+    {
+      "physicalPage": 20,
+      "tablePage": 19,
+      "records": 51
+    },
+    {
+      "physicalPage": 21,
+      "tablePage": 20,
+      "records": 51
+    },
+    {
+      "physicalPage": 22,
+      "tablePage": 21,
+      "records": 51
+    },
+    {
+      "physicalPage": 23,
+      "tablePage": 22,
+      "records": 51
+    },
+    {
+      "physicalPage": 24,
+      "tablePage": 23,
+      "records": 51
+    },
+    {
+      "physicalPage": 25,
+      "tablePage": 24,
+      "records": 49
+    }
+  ]
+}

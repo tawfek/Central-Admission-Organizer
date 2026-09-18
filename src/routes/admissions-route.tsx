@@ -112,7 +112,7 @@ export function AdmissionsRoute() {
         <div className="flex flex-col gap-2 border-t border-zinc-100 bg-zinc-50/70 p-4 sm:flex-row sm:px-8 dark:border-zinc-800 dark:bg-zinc-950/30">
           <Button asChild variant="outline" size="sm">
             <a
-              href={`${import.meta.env.BASE_URL}الحدود الدنيا 2025-2026.pdf`}
+              href={`${import.meta.env.BASE_URL}admission-minimums.pdf`}
               target="_blank"
               rel="noreferrer"
             >

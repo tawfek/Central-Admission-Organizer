@@ -2,7 +2,7 @@
 
 A modern, static React application for exploring Iraqi central-admission minimum scores, selecting departments, arranging their order, printing the final list, and sharing it through WhatsApp or Telegram.
 
-**No runtime backend or database is required.** The source TXT files are converted to a generated JSON dataset and bundled into the frontend.
+**No runtime backend or database is required.** A build-time PDF importer converts the canonical admission-minimums PDF directly into a validated JSON dataset bundled with the frontend.
 
 - [English documentation](docs/en/README.md)
 - [التوثيق العربي](docs/ar/README.md)
@@ -39,11 +39,15 @@ copy .env.example .env
 ## Data flow
 
 ```text
-src/data/raw/*.txt
+public/admission-minimums.pdf
        ↓
 bun run data:import
        ↓
-src/features/admissions/data/admissions.raw.json
+PDF coordinate parser + validation
+       ↓
+src/features/admissions/data/admissions.json
+       +
+src/features/admissions/data/admission-import-report.json
        ↓
 localAdmissionRepository
        ↓

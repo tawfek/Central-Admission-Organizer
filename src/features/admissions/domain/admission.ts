@@ -1,27 +1,6 @@
 import type { TFunction } from "i18next"
 import type { Admission, AdmissionFilters } from "./types"
 
-type LegacyAdmission = Array<string | number | null>
-
-const clean = (value: unknown) => String(value ?? "").replace(/\r?\n/g, "").trim()
-
-export function normalizeLegacyAdmission(row: LegacyAdmission, index: number): Admission {
-  const percent = Number.parseFloat(clean(row[4]))
-  const degreeAll = Number.parseFloat(clean(row[3]))
-  return {
-    key: index,
-    id: index + 1,
-    sourceId: clean(row[1]),
-    code: clean(row[5]),
-    name: clean(row[2]),
-    degreeAll: Number.isFinite(degreeAll) ? degreeAll : null,
-    percent: Number.isFinite(percent) ? percent : 0,
-    rawType: clean(row[6]),
-    type: clean(row[6]),
-    sex: clean(row[7])
-  }
-}
-
 export function applyAdmissionFilters(rows: Admission[], filters: AdmissionFilters): Admission[] {
   const max = filters.maximumPercent.trim() === "" ? null : Number.parseFloat(filters.maximumPercent)
   const name = filters.name.trim().toLocaleLowerCase("ar")
