@@ -8,6 +8,15 @@ Configure this repository as the bot's **Main Mini App** and use the deployed HT
 https://tawfek.github.io/Central-Admission-Organizer/
 ```
 
+Configured Telegram identifiers:
+
+```text
+Bot username: LuckySix7_Bot
+Mini App short name: admission
+Direct Mini App link: https://t.me/LuckySix7_Bot/admission
+Web App URL: https://tawfek.github.io/Central-Admission-Organizer/
+```
+
 No separate Telegram frontend is required. The same React application detects Telegram and enables the Mini App integration automatically.
 
 ## Implemented integration

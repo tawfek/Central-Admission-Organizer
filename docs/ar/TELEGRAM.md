@@ -8,6 +8,15 @@
 https://tawfek.github.io/Central-Admission-Organizer/
 ```
 
+إعدادات Telegram الحالية:
+
+```text
+Bot username: LuckySix7_Bot
+Mini App short name: admission
+Direct Mini App link: https://t.me/LuckySix7_Bot/admission
+Web App URL: https://tawfek.github.io/Central-Admission-Organizer/
+```
+
 لا توجد نسخة Frontend منفصلة لتليغرام. نفس تطبيق React يكتشف تشغيله داخل Telegram ويفعل التكامل تلقائيًا.
 
 ## التكامل المنفذ

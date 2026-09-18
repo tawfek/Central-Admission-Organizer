@@ -9,6 +9,7 @@ import { IRAQ_LOCATIONS } from "@/features/selection/data/iraq-locations"
 import { createEmptySelectionState, pruneUnavailableSelectionState, reconcileSelectionState, resetSelectionOrderState, setOrderedSelectionState } from "@/features/selection/domain/selection-state"
 import { buildSelectionShareUrl, readSharedSelectionIds } from "@/features/selection/domain/share"
 import { isTelegramPlatform } from "@/integrations/telegram/telegram"
+import { buildTelegramMiniAppUrl, TELEGRAM_MINI_APP_URL } from "@/config/telegram"
 import { normalizeAdmissions } from "../scripts/admission-pdf/normalize"
 import { validateAdmissions } from "../scripts/admission-pdf/validate"
 
@@ -201,5 +202,15 @@ describe("telegram integration", () => {
     expect(isTelegramPlatform("tdesktop")).toBe(true)
     expect(isTelegramPlatform("unknown")).toBe(false)
     expect(isTelegramPlatform(undefined)).toBe(false)
+  })
+})
+
+
+describe("telegram public configuration", () => {
+  it("builds the configured direct Mini App URL", () => {
+    expect(TELEGRAM_MINI_APP_URL).toBe("https://t.me/LuckySix7_Bot/admission")
+    expect(buildTelegramMiniAppUrl("example")).toBe(
+      "https://t.me/LuckySix7_Bot/admission?startapp=example",
+    )
   })
 })

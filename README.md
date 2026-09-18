@@ -20,6 +20,16 @@ A modern, static React application for exploring Iraqi central-admission minimum
 - Bun test runner
 - Telegram Mini App integration (theme, native navigation/actions, haptics, CloudStorage)
 
+## Telegram Mini App
+
+The deployed app is also configured for Telegram:
+
+```text
+https://t.me/LuckySix7_Bot/admission
+```
+
+The bot token is intentionally not stored in this repository. Any future Bot API backend must keep it server-side.
+
 ## Quick start
 
 ```bash
